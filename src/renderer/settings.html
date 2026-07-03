@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Supa Count — configurações</title>
+<style>
+  :root { --bg:#101614; --card:#17201c; --border:#24312b; --text:#e6efe9; --muted:#7d938a; --accent:#3ecf8e; }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; padding:18px; font-size:13px; }
+  h1 { font-size:15px; margin-bottom:14px; }
+  label { display:block; margin-bottom:10px; }
+  .k { display:block; font-size:9.5px; text-transform:uppercase; letter-spacing:.14em; color:var(--muted); margin-bottom:3px; }
+  input, select {
+    width:100%; background:var(--card); border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:7px 9px; font-size:12.5px; font-family:inherit;
+  }
+  input:focus, select:focus { outline:1px solid var(--accent); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .grid3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  .hint { font-size:10.5px; color:var(--muted); margin:-6px 0 10px; line-height:1.45; }
+  button {
+    background:var(--accent); color:#0c1f16; border:none; border-radius:999px;
+    padding:9px 22px; font-size:12px; font-weight:600; cursor:pointer; margin-top:6px;
+  }
+  #saved { color:var(--accent); font-size:11px; margin-left:10px; }
+  .sec { border-top:1px solid var(--border); margin:14px 0 12px; padding-top:12px; }
+</style>
+</head>
+<body>
+  <h1>supa-count · configurações</h1>
+
+  <label><span class="k">project ref</span><input id="projectRef" placeholder="abcdefghijklmnop"></label>
+  <label><span class="k">nome (exibição)</span><input id="projectName" placeholder="Meu Projeto"></label>
+  <label><span class="k">personal access token (sbp_…)</span><input id="managementToken" type="password" placeholder="sbp_..."></label>
+  <p class="hint">crie em supabase.com/dashboard/account/tokens · fica só neste computador (config.json local), nunca vai pra lugar nenhum.</p>
+  <label><span class="k">service role key (opcional — libera disco/RAM/load)</span><input id="serviceRoleKey" type="password" placeholder="sb_secret_... / service_role JWT"></label>
+
+  <div class="sec grid3">
+    <label><span class="k">plano DB (GB)</span><input id="dbLimitGb" type="number" min="0.5" step="0.5"></label>
+    <label><span class="k">storage (GB)</span><input id="storageLimitGb" type="number" min="1"></label>
+    <label><span class="k">MAU (limite)</span><input id="mauLimit" type="number" min="100"></label>
+  </div>
+
+  <div class="grid2">
+    <label><span class="k">refresh (segundos)</span><input id="refreshSec" type="number" min="60" step="30"></label>
+    <label><span class="k">tema</span>
+      <select id="theme"><option value="dark">dark</option><option value="light">light</option></select>
+    </label>
+  </div>
+  <label><span class="k">idioma</span>
+    <select id="locale"><option value="pt-BR">português (BR)</option><option value="en">english</option></select>
+  </label>
+
+  <button id="save">salvar</button><span id="saved"></span>
+
+  <script src="settings.js"></script>
+</body>
+</html>

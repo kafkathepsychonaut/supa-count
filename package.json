@@ -1,0 +1,45 @@
+{
+  "name": "supa-count",
+  "productName": "Supa Count",
+  "version": "0.1.0",
+  "description": "Desktop widget que monitora o usage do seu projeto Supabase em tempo real (DB, disco, storage, MAU, RAM, conexões).",
+  "main": "src/main.js",
+  "author": "Kafka Software",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kafkathepsychonaut/supa-count.git"
+  },
+  "scripts": {
+    "start": "electron .",
+    "usage": "node src/supabase.js",
+    "dist": "electron-builder",
+    "dist:portable": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^42.5.0",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "com.supacount.app",
+    "publish": {
+      "provider": "github",
+      "owner": "kafkathepsychonaut",
+      "repo": "supa-count",
+      "releaseType": "release"
+    },
+    "directories": { "output": "dist" },
+    "files": ["src/**/*", "package.json"],
+    "win": { "target": ["nsis", "portable"] },
+    "portable": { "artifactName": "Supa Count.exe" },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "artifactName": "Supa-Count-Setup-${version}.exe"
+    },
+    "mac": { "target": ["dmg", "zip"], "category": "public.app-category.developer-tools", "identity": null },
+    "linux": { "target": ["AppImage"], "category": "Utility" }
+  }
+}

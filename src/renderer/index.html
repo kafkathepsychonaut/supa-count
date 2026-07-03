@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Supa Count</title>
+<style>
+  /* CSS inline obrigatório (padrão count-claudula). Temas via CSS vars. */
+  :root {
+    --bg: #101614;
+    --card: #17201c;
+    --border: #24312b;
+    --text: #e6efe9;
+    --muted: #7d938a;
+    --accent: #3ecf8e;
+    --warn: #e6a817;
+    --danger: #e0563a;
+    --track: #223029;
+  }
+  body.theme-light {
+    --bg: transparent;
+    --card: #f6faf7;
+    --border: #d6e3da;
+    --text: #17251e;
+    --muted: #5c7268;
+    --track: #e2ece5;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: transparent; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    padding: 11px; /* respiro pra sombra */
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  #card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    box-shadow: 0 6px 24px rgba(0,0,0,.35);
+    overflow: hidden;
+    color: var(--text);
+  }
+  #titlebar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 9px 12px 7px;
+    -webkit-app-region: drag;
+  }
+  #dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+  #dot.err { background: var(--danger); }
+  #dot.loading { background: var(--warn); }
+  #title { font-size: 12px; font-weight: 600; letter-spacing: .04em; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #title small { color: var(--muted); font-weight: 400; }
+  .btn {
+    -webkit-app-region: no-drag;
+    background: none; border: none; color: var(--muted);
+    font-size: 12px; cursor: pointer; padding: 2px 4px; border-radius: 5px; line-height: 1;
+  }
+  .btn:hover { color: var(--text); background: var(--track); }
+  #rows { padding: 2px 12px 8px; display: grid; gap: 7px; }
+  .row { display: grid; gap: 3px; }
+  .row .head { display: flex; justify-content: space-between; align-items: baseline; font-size: 10.5px; }
+  .row .label { color: var(--muted); text-transform: uppercase; letter-spacing: .12em; font-size: 9px; }
+  .row .val { font-variant-numeric: tabular-nums; font-size: 11px; }
+  .bar { height: 5px; border-radius: 3px; background: var(--track); overflow: hidden; }
+  .bar > i { display: block; height: 100%; border-radius: 3px; background: var(--accent); transition: width .5s ease; }
+  .bar > i.warn { background: var(--warn); }
+  .bar > i.danger { background: var(--danger); }
+  #miniGrid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; padding: 0 12px 8px; }
+  .mini {
+    background: var(--track); border-radius: 8px; padding: 6px 8px;
+    display: grid; gap: 1px;
+  }
+  .mini .k { font-size: 8.5px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+  .mini .v { font-size: 12px; font-variant-numeric: tabular-nums; }
+  #foot {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 6px 12px 9px; font-size: 9.5px; color: var(--muted);
+    border-top: 1px solid var(--border);
+  }
+  #msg { padding: 10px 12px 12px; font-size: 11px; color: var(--muted); line-height: 1.5; display: none; }
+  #msg.show { display: block; }
+  #msg.err { color: var(--danger); }
+</style>
+</head>
+<body>
+  <div id="card">
+    <div id="titlebar">
+      <div id="dot"></div>
+      <div id="title">supa-count <small id="projName"></small></div>
+      <button class="btn" id="btnRefresh" title="atualizar">↻</button>
+      <button class="btn" id="btnSettings" title="configurações">⚙</button>
+      <button class="btn" id="btnHide" title="esconder">×</button>
+    </div>
+    <div id="rows"></div>
+    <div id="miniGrid"></div>
+    <div id="msg"></div>
+    <div id="foot"><span id="updatedAt">—</span><span id="countdown"></span></div>
+  </div>
+  <script src="../i18n.js"></script>
+  <script src="renderer.js"></script>
+</body>
+</html>
