@@ -2,7 +2,9 @@
 
 'use strict';
 
-const { t } = window.__i18n;
+// Fallback defensivo: se o i18n não carregou, mostra as chaves cruas em vez de
+// morrer silencioso (widget vazio sem erro).
+const { t } = window.__i18n ?? { t: (_l, k) => k };
 
 let locale = 'pt-BR';
 let limits = { dbLimitGb: 8, storageLimitGb: 100, mauLimit: 100000 };
@@ -158,3 +160,6 @@ window.supa.onBreaker((v) => {
 $('btnRefresh').addEventListener('click', () => window.supa.refresh());
 $('btnSettings').addEventListener('click', () => window.supa.openSettings());
 $('btnHide').addEventListener('click', () => window.supa.hide());
+
+// Listeners registrados — agora sim pede o estado ao main (handshake).
+window.supa.ready();

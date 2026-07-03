@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('supa', {
   onError: (fn) => ipcRenderer.on('usage:error', (_e, p) => fn(p)),
   onLoading: (fn) => ipcRenderer.on('usage:loading', (_e, p) => fn(p)),
   onBreaker: (fn) => ipcRenderer.on('usage:breaker', (_e, p) => fn(p)),
+  ready: () => ipcRenderer.send('ui:ready'),
   refresh: () => ipcRenderer.send('ui:refresh'),
   openSettings: () => ipcRenderer.send('ui:openSettings'),
   hide: () => ipcRenderer.send('ui:hide'),

@@ -132,9 +132,6 @@ function createWindow() {
 
   win.once('ready-to-show', () => {
     win.show();
-    pushInit();
-    if (lastGood) send('usage:update', lastGood);
-    if (lastError) send('usage:error', lastError);
     if (!configured()) openSettings();
   });
   win.on('moved', savePos);
@@ -159,6 +156,16 @@ function pushInit() {
     configured: configured(),
   });
 }
+
+// Handshake: o RENDERER pede o estado quando os listeners já estão registrados
+// — elimina o race "main mandou init antes do renderer escutar" (widget abria
+// vazio na primeira execução, 2026-07-02).
+ipcMain.on('ui:ready', () => {
+  pushInit();
+  if (lastGood) send('usage:update', lastGood);
+  if (lastError) send('usage:error', lastError);
+  if (breakerOpen) send('usage:breaker', true);
+});
 
 // Altura dirigida pelo renderer (conteúdo varia por idioma/erros).
 ipcMain.on('ui:height', (_e, h) => {
