@@ -27,6 +27,11 @@
       openDashboard: 'abrir dashboard do supabase',
       quit: 'sair',
       infraOff: 'infra indisponível (service key?)',
+      updateDownload: 'baixar atualização',
+      updating: 'baixando',
+      updateRestart: 'atualizar e reiniciar',
+      more: 'mais detalhes',
+      less: 'menos',
     },
     en: {
       db: 'database',
@@ -49,6 +54,11 @@
       openDashboard: 'open supabase dashboard',
       quit: 'quit',
       infraOff: 'infra unavailable (service key?)',
+      updateDownload: 'download update',
+      updating: 'downloading',
+      updateRestart: 'update & restart',
+      more: 'more details',
+      less: 'less',
     },
   };
 

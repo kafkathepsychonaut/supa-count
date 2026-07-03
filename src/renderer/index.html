@@ -81,6 +81,30 @@
   #msg { padding: 10px 12px 12px; font-size: 11px; color: var(--muted); line-height: 1.5; display: none; }
   #msg.show { display: block; }
   #msg.err { color: var(--danger); }
+  /* banner de update (espelha a tray) */
+  #upd {
+    display: none; align-items: center; gap: 6px; margin: 0 12px 8px;
+    padding: 5px 10px; border-radius: 8px; font-size: 10.5px; font-weight: 600;
+    color: var(--accent); background: var(--track); border: 1px solid var(--border);
+    cursor: pointer;
+  }
+  #upd:hover { border-color: var(--accent); }
+  body.has-upd #upd { display: flex; }
+  /* seção detalhada expansível */
+  #moreBtn {
+    display: none;
+    width: 100%; background: none; border: none; border-top: 1px solid var(--border);
+    color: var(--muted); font-size: 9px; text-transform: uppercase; letter-spacing: .18em;
+    padding: 6px; cursor: pointer;
+  }
+  #moreBtn:hover { color: var(--text); }
+  #detail { display: none; padding: 2px 12px 4px; }
+  body.has-detail #detail { display: block; }
+  .drow { display: flex; justify-content: space-between; align-items: baseline; padding: 3px 0; font-size: 10.5px; border-top: 1px solid var(--border); }
+  .drow:first-child { border-top: none; }
+  .drow .dk { color: var(--muted); }
+  .drow .dv { font-variant-numeric: tabular-nums; }
+  .dsec { font-size: 8.5px; text-transform: uppercase; letter-spacing: .14em; color: var(--accent); margin: 6px 0 1px; }
 </style>
 </head>
 <body>
@@ -92,9 +116,12 @@
       <button class="btn" id="btnSettings" title="configurações">⚙</button>
       <button class="btn" id="btnHide" title="esconder">×</button>
     </div>
+    <div id="upd" role="button"><span>⭳</span><span id="updLabel"></span></div>
     <div id="rows"></div>
     <div id="miniGrid"></div>
     <div id="msg"></div>
+    <button id="moreBtn" type="button"></button>
+    <div id="detail"></div>
     <div id="foot"><span id="updatedAt">—</span><span id="countdown"></span></div>
   </div>
   <script src="../i18n.js"></script>

@@ -5,10 +5,11 @@
 'use strict';
 
 const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, powerMonitor, shell } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const fs = require('fs');
 const { fetchAll } = require('./supabase');
-const { t, LOCALES } = require('./i18n');
+const { t } = require('./i18n');
 
 const WIN_W = 280;
 const H_MIN = 120;
@@ -36,6 +37,13 @@ let rejects4xx = 0;
 let breakerOpen = false;
 let extHeight = H_MIN;
 
+// ── estado de update (electron-updater, consent-first) ─────────────────────
+let updateAvailable = false; // release mais nova existe (só metadados)
+let updateDownloading = false;
+let updateReady = false;     // baixado; "atualizar e reiniciar" no tray + banner
+let updateVersion = '';
+let updateProgress = 0;
+
 // ── config (userData/config.json — local, nunca no repo) ────────────────────
 function cfgPath() {
   return path.join(app.getPath('userData'), 'config.json');
@@ -46,6 +54,9 @@ function defaultCfg() {
     projectName: '',
     managementToken: '',
     serviceRoleKey: '',
+    // Token do GitHub (fine-grained, Contents:read no repo) — SÓ pra o updater
+    // ler as releases do repo PRIVADO. Fica no config local, nunca no instalador.
+    githubToken: '',
     dbLimitGb: 8,
     storageLimitGb: 100,
     mauLimit: 100000,
@@ -165,6 +176,7 @@ ipcMain.on('ui:ready', () => {
   if (lastGood) send('usage:update', lastGood);
   if (lastError) send('usage:error', lastError);
   if (breakerOpen) send('usage:breaker', true);
+  send('update:state', updateUiState());
 });
 
 // Altura dirigida pelo renderer (conteúdo varia por idioma/erros).
@@ -273,15 +285,26 @@ function updateTrayTooltip() {
 function rebuildTrayMenu() {
   if (!tray) return;
   const L = cfg.locale;
-  tray.setContextMenu(Menu.buildFromTemplate([
+  const items = [
     { label: t(L, 'showHide'), click: () => (win.isVisible() ? win.hide() : win.show()) },
     { label: t(L, 'refreshNow'), click: pollNow },
     { label: t(L, 'settings'), click: openSettings },
+  ];
+  // Item de update espelha o banner (mesmo do count-claudula).
+  if (updateReady) {
+    items.push({ type: 'separator' }, { label: t(L, 'updateRestart'), click: installUpdate });
+  } else if (updateDownloading) {
+    items.push({ type: 'separator' }, { label: `${t(L, 'updating')} ${updateProgress}%`, enabled: false });
+  } else if (updateAvailable) {
+    items.push({ type: 'separator' }, { label: `${t(L, 'updateDownload')} · v${updateVersion}`, click: startUpdateDownload });
+  }
+  items.push(
     { type: 'separator' },
     { label: t(L, 'openDashboard'), click: () => shell.openExternal(`https://supabase.com/dashboard/project/${cfg.projectRef}`) },
     { type: 'separator' },
     { label: t(L, 'quit'), click: () => { quitting = true; app.quit(); } },
-  ]));
+  );
+  tray.setContextMenu(Menu.buildFromTemplate(items));
 }
 
 // ── settings ─────────────────────────────────────────────────────────────────
@@ -310,6 +333,8 @@ function openSettings() {
 ipcMain.on('ui:refresh', pollNow);
 ipcMain.on('ui:openSettings', openSettings);
 ipcMain.on('ui:hide', () => win?.hide());
+ipcMain.on('ui:update-download', startUpdateDownload);
+ipcMain.on('ui:update-restart', installUpdate);
 ipcMain.handle('settings:get', () => ({ ...cfg }));
 ipcMain.handle('settings:set', (_e, next) => {
   const before = { ref: cfg.projectRef, tok: cfg.managementToken, srk: cfg.serviceRoleKey };
@@ -324,9 +349,70 @@ ipcMain.handle('settings:set', (_e, next) => {
     lastError = null;
     send('usage:update', null);
   }
+  // Token de update colado/alterado → re-aplica o header pro próximo check.
+  if (app.isPackaged && cfg.githubToken) {
+    try { autoUpdater.addAuthHeader(`token ${cfg.githubToken}`); } catch { /* ignore */ }
+  }
   if (configured()) pollNow();
   return { ok: true };
 });
+
+// ── auto-update (electron-updater) — fluxo idêntico ao count-claudula ────────
+// Consent-first: nada baixa sozinho (build unsigned). Só checa metadados; o
+// usuário dispara o download pelo banner/tray; instala no restart. Repo PRIVADO
+// → token do config local via addAuthHeader, nunca embutido no instalador.
+function updateUiState() {
+  if (updateReady) return { state: 'ready', version: updateVersion };
+  if (updateDownloading) return { state: 'downloading', version: updateVersion, percent: updateProgress };
+  if (updateAvailable) return { state: 'available', version: updateVersion };
+  return { state: 'none' };
+}
+function syncUpdateUi(progressOnly) {
+  if (!progressOnly) rebuildTrayMenu();
+  send('update:state', updateUiState());
+}
+function startUpdateDownload() {
+  if (!updateAvailable || updateDownloading || updateReady) return;
+  updateDownloading = true;
+  updateProgress = 0;
+  syncUpdateUi();
+  autoUpdater.downloadUpdate().catch(() => { updateDownloading = false; syncUpdateUi(); });
+}
+function installUpdate() {
+  if (!updateReady) return;
+  quitting = true;
+  autoUpdater.quitAndInstall(true, true); // NSIS silencioso + relança
+}
+function setupUpdater() {
+  if (!app.isPackaged || process.env.PORTABLE_EXECUTABLE_DIR) return; // só o NSIS instalado
+  autoUpdater.autoDownload = false;
+  autoUpdater.autoInstallOnAppQuit = true;
+  // Repo privado: token do config habilita a leitura das releases via API.
+  if (cfg.githubToken) {
+    try { autoUpdater.addAuthHeader(`token ${cfg.githubToken}`); } catch { /* ignore */ }
+  }
+  autoUpdater.on('update-available', (info) => {
+    updateAvailable = true;
+    updateVersion = (info && info.version) || '';
+    syncUpdateUi();
+  });
+  autoUpdater.on('update-not-available', () => {
+    if (updateAvailable) { updateAvailable = false; updateVersion = ''; syncUpdateUi(); }
+  });
+  autoUpdater.on('download-progress', (p) => {
+    updateProgress = Math.round((p && p.percent) || 0);
+    syncUpdateUi(true);
+  });
+  autoUpdater.on('update-downloaded', () => { updateDownloading = false; updateReady = true; syncUpdateUi(); });
+  autoUpdater.on('error', () => { if (updateDownloading) { updateDownloading = false; syncUpdateUi(); } });
+  const check = () => {
+    if (updateDownloading || updateReady) return;
+    if (!cfg.githubToken) return; // sem token não dá pra ler o repo privado
+    try { autoUpdater.checkForUpdates().catch(() => {}); } catch { /* ignore */ }
+  };
+  setTimeout(check, 15000);
+  setInterval(check, 6 * 60 * 60 * 1000);
+}
 
 // ── app lifecycle ────────────────────────────────────────────────────────────
 const gotLock = app.requestSingleInstanceLock();
@@ -351,6 +437,7 @@ if (!gotLock) {
     powerMonitor.on('unlock-screen', pollNow);
 
     if (configured()) poll();
+    setupUpdater();
   });
 
   app.on('window-all-closed', () => { /* vive na tray */ });

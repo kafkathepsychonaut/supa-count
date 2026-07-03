@@ -12,6 +12,8 @@ let last = null;
 let nextAt = 0;
 let isConfigured = false;
 let breaker = false;
+let updState = null; // banner de update: {state, version, percent}
+let showDetail = (() => { try { return localStorage.getItem('supa-detail') === '1'; } catch { return false; } })();
 
 const $ = (id) => document.getElementById(id);
 
@@ -95,8 +97,56 @@ function render() {
     msg.textContent = t(locale, 'infraOff');
     msg.className = 'show';
   }
+  renderDetail();
   $('updatedAt').textContent = `${t(locale, 'updated')} ${new Date(last.at).toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })}`;
   reportHeight();
+}
+
+// Banner de update (espelha a tray): available → clique baixa; downloading → %;
+// ready → clique reinicia na versão nova. Idêntico ao count-claudula.
+function renderUpdate() {
+  document.body.classList.toggle('has-upd', !!updState);
+  if (!updState) return;
+  let label;
+  if (updState.state === 'ready') label = t(locale, 'updateRestart');
+  else if (updState.state === 'downloading') label = `${t(locale, 'updating')}${updState.percent ? ' ' + updState.percent + '%' : ''}`;
+  else label = `${t(locale, 'updateDownload')}${updState.version ? ' · v' + updState.version : ''}`;
+  $('updLabel').textContent = label;
+}
+
+// Visão detalhada expansível — mantém a básica intacta; aqui as métricas extras
+// que o endpoint privilegiado + o SQL liberam. Diego 2026-07-03.
+function drow(k, v) { return `<div class="drow"><span class="dk">${k}</span><span class="dv">${v}</span></div>`; }
+function dsec(txt) { return `<div class="dsec">${txt}</div>`; }
+function renderDetail() {
+  const btn = $('moreBtn');
+  const det = $('detail');
+  const hasData = isConfigured && last;
+  btn.style.display = hasData ? 'block' : 'none';
+  document.body.classList.toggle('has-detail', hasData && showDetail);
+  btn.textContent = showDetail ? `▲ ${t(locale, 'less')}` : `▼ ${t(locale, 'more')}`;
+  if (!hasData || !showDetail) { det.innerHTML = ''; return; }
+  const s = last.sql;
+  const infra = last.infra && !last.infra.error ? last.infra : null;
+  let h = '';
+  h += dsec(t(locale, 'db'));
+  if (s.cacheHitPct != null) h += drow('cache hit', `${s.cacheHitPct}%`);
+  if (s.publicTables != null) h += drow('tabelas', String(s.publicTables));
+  if (s.biggestTable) h += drow('maior tabela', `${s.biggestTable} · ${fmtBytes(s.biggestTableBytes)}`);
+  h += dsec(t(locale, 'conn'));
+  h += drow('ativas / idle / total', `${s.activeConnections} / ${s.idleConnections ?? '—'} / ${s.totalConnections ?? '—'}`);
+  if (infra && infra.poolWaiting != null) h += drow('pool esperando', String(infra.poolWaiting));
+  if (infra) {
+    h += dsec('infra');
+    if (infra.swapTotalBytes) {
+      const sp = Math.round((infra.swapUsedBytes / infra.swapTotalBytes) * 100);
+      h += drow('swap', `${fmtBytes(infra.swapUsedBytes)} / ${fmtBytes(infra.swapTotalBytes)} · ${sp}%`);
+    }
+    if (infra.memCachedBytes != null) h += drow('RAM cache', fmtBytes(infra.memCachedBytes));
+    if (infra.load1 != null) h += drow('load 1/5/15', `${infra.load1.toFixed(2)} · ${(infra.load5 ?? 0).toFixed(2)} · ${(infra.load15 ?? 0).toFixed(2)}`);
+    if (infra.cpus != null) h += drow('CPUs', String(infra.cpus));
+  }
+  det.innerHTML = h;
 }
 
 function reportHeight() {
@@ -129,6 +179,7 @@ window.supa.onInit((p) => {
   isConfigured = p.configured;
   document.body.className = p.theme === 'light' ? 'theme-light' : '';
   $('projName').textContent = p.projectName ? `· ${p.projectName}` : '';
+  renderUpdate();
   render();
 });
 window.supa.onUsage((p) => {
@@ -157,9 +208,26 @@ window.supa.onBreaker((v) => {
   }
 });
 
+window.supa.onUpdate((u) => {
+  updState = u && u.state && u.state !== 'none' ? u : null;
+  renderUpdate();
+  reportHeight();
+});
+
 $('btnRefresh').addEventListener('click', () => window.supa.refresh());
 $('btnSettings').addEventListener('click', () => window.supa.openSettings());
 $('btnHide').addEventListener('click', () => window.supa.hide());
+$('upd').addEventListener('click', () => {
+  if (!updState) return;
+  if (updState.state === 'ready') window.supa.updateRestart();
+  else if (updState.state === 'available') window.supa.updateDownload();
+});
+$('moreBtn').addEventListener('click', () => {
+  showDetail = !showDetail;
+  try { localStorage.setItem('supa-detail', showDetail ? '1' : '0'); } catch { /* ignore */ }
+  renderDetail();
+  reportHeight();
+});
 
 // Listeners registrados — agora sim pede o estado ao main (handshake).
 window.supa.ready();

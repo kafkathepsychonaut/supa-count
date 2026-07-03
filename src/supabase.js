@@ -18,7 +18,13 @@ const SQL = `select
   (select coalesce(sum((metadata->>'size')::bigint),0) from storage.objects) as storage_bytes,
   (select count(*) from auth.users) as total_users,
   (select count(distinct id) from auth.users where last_sign_in_at >= date_trunc('month', now())) as mau_month,
-  (select count(*) from pg_stat_activity where state = 'active') as active_connections`;
+  (select count(*) from pg_stat_activity where state = 'active') as active_connections,
+  (select count(*) from pg_stat_activity where state = 'idle') as idle_connections,
+  (select count(*) from pg_stat_activity) as total_connections,
+  (select round(100.0 * sum(blks_hit) / nullif(sum(blks_hit) + sum(blks_read), 0), 1) from pg_stat_database) as cache_hit_pct,
+  (select count(*) from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE') as public_tables,
+  (select relname from pg_stat_user_tables order by pg_total_relation_size(relid) desc limit 1) as biggest_table,
+  (select pg_total_relation_size(relid) from pg_stat_user_tables order by pg_total_relation_size(relid) desc limit 1) as biggest_table_bytes`;
 
 const TIMEOUT_MS = 20_000;
 
@@ -62,12 +68,19 @@ async function fetchSqlStats({ projectRef, managementToken }) {
   const rows = await res.json();
   const r = Array.isArray(rows) ? rows[0] : rows;
   if (!r || r.db_bytes === undefined) throw typedError('resposta inesperada do SQL', { status: 500 });
+  const num = (v) => (v == null ? null : Number(v));
   return {
     dbBytes: Number(r.db_bytes),
     storageBytes: Number(r.storage_bytes),
     totalUsers: Number(r.total_users),
     mauMonth: Number(r.mau_month),
     activeConnections: Number(r.active_connections),
+    idleConnections: num(r.idle_connections),
+    totalConnections: num(r.total_connections),
+    cacheHitPct: num(r.cache_hit_pct),
+    publicTables: num(r.public_tables),
+    biggestTable: r.biggest_table ?? null,
+    biggestTableBytes: num(r.biggest_table_bytes),
   };
 }
 
@@ -111,15 +124,27 @@ async function fetchInfraMetrics({ projectRef, serviceRoleKey }) {
   const diskSize = pick(ms, 'node_filesystem_size_bytes', isData);
   const memAvail = pick(ms, 'node_memory_MemAvailable_bytes');
   const memTotal = pick(ms, 'node_memory_MemTotal_bytes');
-  const load1 = pick(ms, 'node_load1');
+  const memCached = pick(ms, 'node_memory_Cached_bytes');
+  const swapTotal = pick(ms, 'node_memory_SwapTotal_bytes');
+  const swapFree = pick(ms, 'node_memory_SwapFree_bytes');
   const cpus = ms.filter((m) => m.name === 'node_cpu_online' && m.value === 1).length || null;
+  // soma pgbouncer client connections esperando por servidor (pressão do pool)
+  const poolWaiting = ms
+    .filter((m) => m.name === 'pgbouncer_pools_client_waiting_connections')
+    .reduce((a, m) => a + m.value, 0);
   return {
     diskUsedBytes: diskSize != null && diskAvail != null ? diskSize - diskAvail : null,
     diskSizeBytes: diskSize,
     memUsedBytes: memTotal != null && memAvail != null ? memTotal - memAvail : null,
     memTotalBytes: memTotal,
-    load1,
+    memCachedBytes: memCached,
+    swapUsedBytes: swapTotal != null && swapFree != null ? swapTotal - swapFree : null,
+    swapTotalBytes: swapTotal,
+    load1: pick(ms, 'node_load1'),
+    load5: pick(ms, 'node_load5'),
+    load15: pick(ms, 'node_load15'),
     cpus,
+    poolWaiting,
   };
 }
 

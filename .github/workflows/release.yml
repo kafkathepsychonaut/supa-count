@@ -1,0 +1,37 @@
+name: Release
+
+# Empurre uma tag vX.Y.Z e isto builda Windows + macOS + Linux na nuvem e
+# publica os artefatos (com os metadados de auto-update) na release dessa tag.
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Tag deve bater com a versão do package.json
+        shell: bash
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG="$(node -p "require('./package.json').version")"
+          echo "tag=$TAG pkg=$PKG"
+          test "$TAG" = "$PKG" || { echo "::error::tag $GITHUB_REF_NAME não bate com package.json $PKG"; exit 1; }
+      - name: Build & publish
+        run: npx --no-install electron-builder --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

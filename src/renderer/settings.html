@@ -35,6 +35,8 @@
   <label><span class="k">personal access token (sbp_…)</span><input id="managementToken" type="password" placeholder="sbp_..."></label>
   <p class="hint">crie em supabase.com/dashboard/account/tokens · fica só neste computador (config.json local), nunca vai pra lugar nenhum.</p>
   <label><span class="k">service role key (opcional — libera disco/RAM/load)</span><input id="serviceRoleKey" type="password" placeholder="sb_secret_... / service_role JWT"></label>
+  <label><span class="k">github token (opcional — auto-update do repo privado)</span><input id="githubToken" type="password" placeholder="github_pat_..."></label>
+  <p class="hint">fine-grained PAT com Contents:read no repo supa-count. só o updater usa, só neste computador. sem ele o app funciona, mas não busca novas versões sozinho.</p>
 
   <div class="sec grid3">
     <label><span class="k">plano DB (GB)</span><input id="dbLimitGb" type="number" min="0.5" step="0.5"></label>
