@@ -26,7 +26,6 @@
       "provider": "github",
       "owner": "kafkathepsychonaut",
       "repo": "supa-count",
-      "private": true,
       "releaseType": "release"
     },
     "directories": {

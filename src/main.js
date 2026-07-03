@@ -54,9 +54,6 @@ function defaultCfg() {
     projectName: '',
     managementToken: '',
     serviceRoleKey: '',
-    // Token do GitHub (fine-grained, Contents:read no repo) — SÓ pra o updater
-    // ler as releases do repo PRIVADO. Fica no config local, nunca no instalador.
-    githubToken: '',
     dbLimitGb: 8,
     storageLimitGb: 100,
     mauLimit: 100000,
@@ -349,10 +346,6 @@ ipcMain.handle('settings:set', (_e, next) => {
     lastError = null;
     send('usage:update', null);
   }
-  // Token de update colado/alterado → re-aplica o header pro próximo check.
-  if (app.isPackaged && cfg.githubToken) {
-    try { autoUpdater.addAuthHeader(`token ${cfg.githubToken}`); } catch { /* ignore */ }
-  }
   if (configured()) pollNow();
   return { ok: true };
 });
@@ -387,10 +380,6 @@ function setupUpdater() {
   if (!app.isPackaged || process.env.PORTABLE_EXECUTABLE_DIR) return; // só o NSIS instalado
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
-  // Repo privado: token do config habilita a leitura das releases via API.
-  if (cfg.githubToken) {
-    try { autoUpdater.addAuthHeader(`token ${cfg.githubToken}`); } catch { /* ignore */ }
-  }
   autoUpdater.on('update-available', (info) => {
     updateAvailable = true;
     updateVersion = (info && info.version) || '';
@@ -407,7 +396,6 @@ function setupUpdater() {
   autoUpdater.on('error', () => { if (updateDownloading) { updateDownloading = false; syncUpdateUi(); } });
   const check = () => {
     if (updateDownloading || updateReady) return;
-    if (!cfg.githubToken) return; // sem token não dá pra ler o repo privado
     try { autoUpdater.checkForUpdates().catch(() => {}); } catch { /* ignore */ }
   };
   setTimeout(check, 15000);

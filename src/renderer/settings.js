@@ -1,7 +1,7 @@
 'use strict';
 
 const FIELDS = [
-  'projectRef', 'projectName', 'managementToken', 'serviceRoleKey', 'githubToken',
+  'projectRef', 'projectName', 'managementToken', 'serviceRoleKey',
   'dbLimitGb', 'storageLimitGb', 'mauLimit', 'refreshSec', 'theme', 'locale',
 ];
 const NUMERIC = new Set(['dbLimitGb', 'storageLimitGb', 'mauLimit', 'refreshSec']);
